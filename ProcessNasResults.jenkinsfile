@@ -1,0 +1,69 @@
+
+@Library('jenkins-sharedlibs')_
+
+pipeline {
+    agent none
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        disableResume()
+        timestamps()
+    }
+    parameters{
+        string(name: 'ipfile', 
+               defaultValue: 'files.3.json', 
+               description: '') 
+        string(name: 'urlbase', 
+               defaultValue: 'https://s3.ubuntu.home/webdav/home/Downloads/', 
+               description: '') 
+    }
+    stages {
+        stage('Process') {
+            agent {
+                docker {
+                    image 'postgres:13.1-alpine'
+                    label 'docker-host'
+                    registryUrl 'https://docker.io/'
+                    args '-u 70:100'
+                }
+            }
+            stages {
+                stage('Postgres') {
+                    failFast true
+                    parallel {
+                        stage('Run DBMS') {
+                             steps {
+                                sh 'POSTGRES_HOST_AUTH_METHOD=trust /usr/local/bin/docker-entrypoint.sh postgres ||:'
+                             }
+                        }
+                        stage('Process JSON') {
+                            steps {
+                                sh """
+                                  wget --no-check-certificate ${params.urlbase}${params.ipfile}
+                                  ./data.sh ${params.ipfile}
+                                  """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Fixup') {
+            agent {
+                label '64bit'
+            }
+            steps {
+                sh './fix-unicode.sh ' + params.ipfile
+                archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
+            }
+        }
+    }
+    post {
+        always {
+            kafkaBuildReporter()
+        }
+        cleanup {
+            deleteDir()
+        }
+    }
+}
