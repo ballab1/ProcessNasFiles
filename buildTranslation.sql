@@ -1,10 +1,10 @@
 truncate nasinfo.rawdata;
 copy nasinfo.rawdata from ':jsonfile';
 
-DROP TABLE nasinfo.nasdata;
+DROP TABLE IF EXISTS nasinfo.nasdata;
 CREATE TABLE nasinfo.nasdata
 (
-    -- Inherited from table nasinfo.base: id bigint NOT NULL DEFAULT nextval('nasinfo.id'::regclass),
+    id bigint NOT NULL DEFAULT nextval('nasinfo.id'::regclass),
     ischild boolean DEFAULT true,
     isgit boolean DEFAULT false,
     isdel boolean DEFAULT false,
@@ -38,7 +38,6 @@ CREATE TABLE nasinfo.nasdata
     last_status_change_time timestamp with time zone,
     jsondata jsonb
 )
-INHERITS (nasinfo.base) TABLESPACE pg_default;
 ALTER TABLE nasinfo.nasdata OWNER to postgres;
 
 insert into nasinfo.nasdata (jsondata) select data::jsonb from nasinfo.rawdata;

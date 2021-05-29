@@ -11,6 +11,14 @@ CREATE SEQUENCE nasinfo.id
 ALTER SEQUENCE nasinfo.id OWNER TO postgres;
 
 
+DROP TABLE IF EXISTS nasinfo.rawdata;
+CREATE TABLE IF NOT EXISTS nasinfo.rawdata
+(
+    data character varying COLLATE pg_catalog."default"
+)
+TABLESPACE pg_default;
+ALTER TABLE nasinfo.rawdata OWNER to postgres;
+    
 DROP TABLE IF EXISTS nasinfo.nasdata;
 CREATE TABLE nasinfo.nasdata
 (
@@ -49,5 +57,4 @@ CREATE TABLE nasinfo.nasdata
     CONSTRAINT base_pkey PRIMARY KEY (id)
 )
 TABLESPACE pg_default;
-
 ALTER TABLE nasinfo.nasdata OWNER to postgres;
