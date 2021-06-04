@@ -2,7 +2,9 @@
 @Library('jenkins-sharedlibs')_
 
 pipeline {
-    agent any
+    agent {
+		label 'ubuntu-s7'
+    }
     options {
         buildDiscarder(logRotator(numToKeepStr: '20'))
         disableConcurrentBuilds()
@@ -20,11 +22,11 @@ pipeline {
     stages {
         stage('GetData') {
             steps {
-                sh "wget --no-check-certificate ${params.urlbase}${params.ipfile}"
+                sh "wget --no-check-certificate '${params.urlbase}${params.ipfile}'"
             }
         }
         stage('Process') {
-            agent {
+			agent {
                 docker {
                     image 'postgres:13.2-alpine'
                     label 'docker-host'
@@ -33,12 +35,16 @@ pipeline {
                 }
             }
             steps {
-                sh "${WORKSPACE}/data.sh ${params.ipfile}"
+                sh 'ps faux'
+                sh 'env'
+                sh 'pwd;ls -l'
+                sh "'${WORKSPACE}/data.sh' '${params.ipfile}'"
             }
         }
         stage('Fixup') {
             steps {
-                sh '${WORKSPACE}/fix-unicode.sh ' + params.ipfile
+                echo "'${WORKSPACE}/fix-unicode.sh' " + params.ipfile
+                sh "'${WORKSPACE}/fix-unicode.sh' " + params.ipfile
                 archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
             }
         }
