@@ -1,6 +1,6 @@
-CREATE SCHEMA nasinfo;
-DROP SEQUENCE IF EXISTS nasinfo.id;
+CREATE SCHEMA IF NOT EXISTS nasinfo;
 
+DROP SEQUENCE IF EXISTS nasinfo.id CASCADE;
 CREATE SEQUENCE nasinfo.id
     INCREMENT 1
     START 1
@@ -11,7 +11,7 @@ CREATE SEQUENCE nasinfo.id
 ALTER SEQUENCE nasinfo.id OWNER TO postgres;
 
 
-DROP TABLE IF EXISTS nasinfo.rawdata;
+DROP TABLE IF EXISTS nasinfo.rawdata CASCADE;
 CREATE TABLE IF NOT EXISTS nasinfo.rawdata
 (
     data character varying COLLATE pg_catalog."default"
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS nasinfo.rawdata
 TABLESPACE pg_default;
 ALTER TABLE nasinfo.rawdata OWNER to postgres;
     
-DROP TABLE IF EXISTS nasinfo.nasdata;
+DROP TABLE IF EXISTS nasinfo.nasdata CASCADE;
 CREATE TABLE nasinfo.nasdata
 (
     id bigint NOT NULL DEFAULT nextval('nasinfo.id'::regclass),

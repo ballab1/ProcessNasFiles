@@ -2,9 +2,14 @@
 @Library('jenkins-sharedlibs')_
 
 pipeline {
-    agent {
-		label 'ubuntu-s7'
-    }
+	agent {
+		docker {
+			image 'postgres:13.2-alpine'
+			label 'docker-host'
+			registryUrl 'https://docker.io/'
+			args '-u 70:100'
+		}
+	}
     options {
         buildDiscarder(logRotator(numToKeepStr: '20'))
         disableConcurrentBuilds()
@@ -26,25 +31,8 @@ pipeline {
             }
         }
         stage('Process') {
-			agent {
-                docker {
-                    image 'postgres:13.2-alpine'
-                    label 'docker-host'
-                    registryUrl 'https://docker.io/'
-                    args '-u 70:100'
-                }
-            }
             steps {
-                sh 'ps faux'
-                sh 'env'
-                sh 'pwd;ls -l'
                 sh "'${WORKSPACE}/data.sh' '${params.ipfile}'"
-            }
-        }
-        stage('Fixup') {
-            steps {
-                echo "'${WORKSPACE}/fix-unicode.sh' " + params.ipfile
-                sh "'${WORKSPACE}/fix-unicode.sh' " + params.ipfile
                 archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
             }
         }

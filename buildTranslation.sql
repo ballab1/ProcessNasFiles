@@ -1,5 +1,3 @@
-truncate nasinfo.rawdata;
-copy nasinfo.rawdata from ':jsonfile';
 
 DROP TABLE IF EXISTS nasinfo.nasdata;
 CREATE TABLE nasinfo.nasdata
@@ -37,7 +35,7 @@ CREATE TABLE nasinfo.nasdata
     last_modified_time timestamp with time zone,
     last_status_change_time timestamp with time zone,
     jsondata jsonb
-)
+);
 ALTER TABLE nasinfo.nasdata OWNER to postgres;
 
 insert into nasinfo.nasdata (jsondata) select data::jsonb from nasinfo.rawdata;

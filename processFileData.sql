@@ -1,5 +1,3 @@
-truncate nasinfo.rawdata;
-copy nasinfo.rawdata from ':jsonfile';
 
 DROP TABLE nasinfo.nasdata;
 CREATE TABLE nasinfo.nasdata
@@ -100,17 +98,19 @@ update nasinfo.nasdata z set (
   , (z.jsondata->>'last_status_change_time')::timestamp with time zone
   , (z.jsondata->>'file' ~* '/.git/')::boolean
 );
-
 ALTER TABLE nasinfo.nasdata DROP COLUMN "jsondata";
 
+-- find duplicate files using sha256 and set initial rownum = 1
 with
  a as (select sha256, count(*) cnt from nasinfo.nasdata group by sha256)
 update nasinfo.nasdata z set (cnt,rownum) = (a.cnt,1) from a where a.sha256 = z.sha256;
 
+-- update rownum with correct val
 with
  a as (select id, row_number() over (partition by sha256 order by len) rnum from nasinfo.nasdata where cnt > 1 )
 update nasinfo.nasdata z set rownum = rnum from a where a.id = z.id;
 
+-- mark whether or not directories are child dirs
 with
  a as (select *
          from nasinfo.nasdata
