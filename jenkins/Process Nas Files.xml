@@ -1,0 +1,82 @@
+<flow-definition plugin="workflow-job@1346.v180a_63f40267">
+<actions>
+<org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2144.v077a_d1928a_40"/>
+<org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2144.v077a_d1928a_40">
+<jobProperties>
+<string>org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty</string>
+<string>jenkins.model.BuildDiscarderProperty</string>
+<string>org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty</string>
+</jobProperties>
+<triggers/>
+<parameters>
+<string>urlbase</string>
+<string>ipfile</string>
+</parameters>
+<options/>
+</org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+</actions>
+<description/>
+<keepDependencies>false</keepDependencies>
+<properties>
+<jenkins.model.BuildDiscarderProperty>
+<strategy class="hudson.tasks.LogRotator">
+<daysToKeep>-1</daysToKeep>
+<numToKeep>20</numToKeep>
+<artifactDaysToKeep>-1</artifactDaysToKeep>
+<artifactNumToKeep>-1</artifactNumToKeep>
+</strategy>
+</jenkins.model.BuildDiscarderProperty>
+<org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+<abortPrevious>false</abortPrevious>
+</org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+<org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+<com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.37.3">
+<projectUrl>https://github.com/ballab1/ProcessNasFiles/</projectUrl>
+<displayName/>
+</com.coravy.hudson.plugins.github.GithubProjectProperty>
+<org.bstick12.jenkinsci.plugins.leastload.LeastLoadDisabledProperty plugin="leastload@3.0.0">
+<leastLoadDisabled>false</leastLoadDisabled>
+</org.bstick12.jenkinsci.plugins.leastload.LeastLoadDisabledProperty>
+<com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@320.v5a_0933a_e7d61">
+<autoRebuild>false</autoRebuild>
+<rebuildDisabled>false</rebuildDisabled>
+</com.sonyericsson.rebuild.RebuildSettings>
+<hudson.model.ParametersDefinitionProperty>
+<parameterDefinitions>
+<hudson.model.StringParameterDefinition>
+<name>ipfile</name>
+<defaultValue>files.3.json</defaultValue>
+<trim>false</trim>
+</hudson.model.StringParameterDefinition>
+<hudson.model.StringParameterDefinition>
+<name>urlbase</name>
+<defaultValue>https://s3.ubuntu.home/webdav/home/Downloads/</defaultValue>
+<trim>false</trim>
+</hudson.model.StringParameterDefinition>
+</parameterDefinitions>
+</hudson.model.ParametersDefinitionProperty>
+</properties>
+<definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@3787.v8f5dcd14a_fa_c">
+<scm class="hudson.plugins.git.GitSCM" plugin="git@5.2.0">
+<configVersion>2</configVersion>
+<userRemoteConfigs>
+<hudson.plugins.git.UserRemoteConfig>
+<url>https://github.com/ballab1/ProcessNasFiles</url>
+<credentialsId>935a7b57-da74-45f7-9119-5a0529afb8ae</credentialsId>
+</hudson.plugins.git.UserRemoteConfig>
+</userRemoteConfigs>
+<branches>
+<hudson.plugins.git.BranchSpec>
+<name>*/main</name>
+</hudson.plugins.git.BranchSpec>
+</branches>
+<doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+<submoduleCfg class="list"/>
+<extensions/>
+</scm>
+<scriptPath>ProcessNasResults.jenkinsfile</scriptPath>
+<lightweight>false</lightweight>
+</definition>
+<triggers/>
+<disabled>false</disabled>
+</flow-definition>

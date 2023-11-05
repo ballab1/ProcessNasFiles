@@ -3,12 +3,12 @@
 
 pipeline {
 	agent {
-		docker {
-			image 'postgres:13.2-alpine'
-			label 'docker-host'
-			registryUrl 'https://docker.io/'
-			args '-u 70:100'
-		}
+            kubernetes {
+                cloud 'Kubernetes-prod'
+                defaultContainer 'jnlp'
+                yamlFile 'postgres.yaml'
+                showRawYaml(true)
+            }
 	}
     options {
         buildDiscarder(logRotator(numToKeepStr: '20'))
@@ -20,20 +20,26 @@ pipeline {
         string(name: 'ipfile',
                defaultValue: 'files.3.json',
                description: '')
-        string(name: 'urlbase',
-               defaultValue: 'https://s3.ubuntu.home/webdav/home/Downloads/',
-               description: '')
     }
     stages {
         stage('GetData') {
             steps {
-                sh "wget --no-check-certificate '${params.urlbase}${params.ipfile}'"
+                container(name: 'jnlp') {
+                   sh '''
+                      tar xzf files.tgz
+                      ## ./scanShareFiles.py ''' + params.DIRECTORIES + '''
+                      ## jq -s 'def files($f): { "count": $f|length,  "size":[$f[].size]|add }; . as $scan | files($scan) as $all | files( $scan|unique_by(.sha256) ) as $uniq | {"count":($all.count - $uniq.count), "size":($all.size - $uniq.size)} as $diff |{"files": $all, "uniq": $uniq, "diff":$diff}' '${params.ipfile}' ||:
+                   '''
+                   archiveArtifacts allowEmptyArchive: true, artifacts: '*.json'
+               }
             }
         }
         stage('Process') {
             steps {
-                sh "'${WORKSPACE}/data.sh' '${params.ipfile}'"
-                archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
+                container(name: 'postgres') {
+                   sh "'${WORKSPACE}/data.sh' '${params.ipfile}'"
+                   archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
+                }
             }
         }
     }
