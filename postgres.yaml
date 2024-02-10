@@ -27,7 +27,7 @@ spec:
       keytool -importcert -cacerts -noprompt -trustcacerts -alias jenkins_server -file /usr/local/share/ca-certificates/server.crt -storepass changeit
       cp -rL "${JAVA_HOME}/lib/security/cacerts" .
       chmod 644 *
-    image: s2.ubuntu.home:5000/thirdparty/inbound-agent:4.13.3-1-jdk11
+    image: s2.ubuntu.home:5000/docker.io/jenkins/inbound-agent:4.13.3-1-jdk17
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -62,11 +62,12 @@ spec:
       mountPath: /var/run/keystore
   containers:
   - name: jnlp
-    image: s2.ubuntu.home:5000/thirdparty/inbound-agent:4.13.3-1-jdk11
+    image: s2.ubuntu.home:5000/docker.io/jenkins/inbound-agent:4.13.3-1-jdk17
+#    env:
       # running under Java 11 gives "illegal reflective access" warnings
       # https://github.com/glencoesoftware/raw2ometiff/issues/18
-      - name: JAVA_OPTS
-        value: '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
+#      - name: JAVA_OPTS
+#        value: '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -89,7 +90,7 @@ spec:
     - name: workspace-volume
       mountPath: /home
   - name: postgres
-    image: s2.ubuntu.home:5000/thirdparty/postgres:16.0-alpine3.18
+    image: s2.ubuntu.home:5000/docker.io/postgres:16.1-alpine3.18
     imagePullPolicy: IfNotPresent
     ports:
       - name: postgres
@@ -113,8 +114,18 @@ spec:
     args:
     - cat
     tty: true
-    image: python:3.9.18
-#    image: s2.ubuntu.home:5000/alpine/python/3.9.16-r0:dev
+    image: s2.ubuntu.home:5000/docker.io/python:3.9.18
+    imagePullPolicy: IfNotPresent
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+      - mountPath: /home
+        name: sharedvolume
+  - name: build-container
+    args:
+    - cat
+    tty: true
+    image: s2.ubuntu.home:5000/alpine/build_container:dev
     imagePullPolicy: IfNotPresent
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File

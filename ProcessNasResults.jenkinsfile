@@ -2,49 +2,47 @@
 @Library('jenkins-sharedlibs')_
 
 pipeline {
-	agent {
-            kubernetes {
-                cloud 'Kubernetes-prod'
-                defaultContainer 'jnlp'
-                yamlFile 'postgres.yaml'
-                showRawYaml(true)
-            }
-	}
+    agent {
+        kubernetes {
+            cloud 'Kubernetes-prod'
+            defaultContainer 'jnlp'
+            yamlFile 'postgres.yaml'
+            showRawYaml(false)
+        }
+    }
     options {
         buildDiscarder(logRotator(numToKeepStr: '20'))
         disableConcurrentBuilds()
         disableResume()
         timestamps()
     }
-    parameters{
-        string(name: 'ipfile',
-               defaultValue: 'files.3.json',
-               description: '')
-    }
     stages {
         stage('GetData') {
             steps {
-                container(name: 'jnlp') {
-                   sh '''
-                      tar xzf files.tgz
-                      ## ./scanShareFiles.py ''' + params.DIRECTORIES + '''
-                      ## jq -s 'def files($f): { "count": $f|length,  "size":[$f[].size]|add }; . as $scan | files($scan) as $all | files( $scan|unique_by(.sha256) ) as $uniq | {"count":($all.count - $uniq.count), "size":($all.size - $uniq.size)} as $diff |{"files": $all, "uniq": $uniq, "diff":$diff}' '${params.ipfile}' ||:
-                   '''
-                   archiveArtifacts allowEmptyArchive: true, artifacts: '*.json'
+                container(name: 'python') {
+                    // 'webdav:https://bobb:123Oleary@10.3.1.4:5001/#'
+                   sh 'tar xzvf files.tgz; echo ./scanShareFiles.py'
                }
             }
         }
         stage('Process') {
             steps {
                 container(name: 'postgres') {
-                   sh "'${WORKSPACE}/data.sh' '${params.ipfile}'"
-                   archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
+                   sh "./data.sh 'files.3.json'"
+                }
+            }
+        }
+        stage('Post Process') {
+            steps {
+                container(name: 'build-container') {
+                   sh "./data.sh 'files.3.json'"
                 }
             }
         }
     }
     post {
         always {
+            archiveArtifacts allowEmptyArchive: true, artifacts: '*.json,*.txt,*.csv'
             kafkaBuildReporter()
         }
         cleanup {

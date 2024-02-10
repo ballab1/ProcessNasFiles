@@ -11,28 +11,20 @@ See the usage method for more information and examples.
 """
 # Imports: native Python
 import argparse
-import codecs
 import datetime
-import gc
 import grp
 import hashlib
-import io
 import json
 import logging
 import logging.handlers
 import os
 import os.path
+from pathlib import Path
 import pwd
 import random
-import re
-import socket
-#import stat
 import sys
-import tempfile
 import traceback
-from stat import *
 from encodings.aliases import aliases
-#from PyJsonFriendly import JsonFriendly
 from uuid import uuid1
 
 # 3rd party imports
@@ -57,7 +49,7 @@ Usage:
 
 
 #-----------------------------------------------------------------------------
-def fileInfo(file, data):
+def file_info(file, data):
 
     data['file'] = file
 
@@ -65,23 +57,22 @@ def fileInfo(file, data):
     data['folder'] = os.path.dirname(file)
     data['depth'] = file.count('/')
 
-
     for key in ['dir_count', 'file_count', 'size']:
         if key in data.keys():
             del data[key]
 
-
     try:
-        fstat = os.stat(file)
+        p = Path(file)
+        fstat = p.stat(follow_symlinks=True)
         data['blocks'] = fstat.st_blocks
         data['block_size'] = fstat.st_blksize
         data['device'] = fstat.st_dev
         data['device_type'] = fstat.st_rdev
         data['gid'] = fstat.st_gid
-        if groupName(fstat.st_gid):
-            data['gname'] = groupName(fstat.st_gid)
-        elif 'gname' in data.keys():
-            del data['gname']
+        if p.group():
+            data['group_name'] = p.group()
+        elif 'group_name' in data.keys():
+            del data['group_name']
         data['hard_links'] = fstat.st_nlink
         data['inode'] = fstat.st_ino
         data['last_access'] = int(fstat.st_atime)
@@ -91,20 +82,18 @@ def fileInfo(file, data):
         data['last_status_change'] = int(fstat.st_ctime)
         data['last_status_change_time'] = zulu_timestamp(fstat.st_ctime)
         data['mode_8'] = oct(fstat.st_mode)
-#        data['mode_x'] = stat.filemode(fstat.st_mode)
         data['size'] = fstat.st_size
-        data['type'] = fileType(fstat.st_mode)
+        data['type'] = file_type(p)
         data['uid'] = fstat.st_uid
-        if userName(fstat.st_uid):
-            data['uname'] = userName(fstat.st_uid)
-        elif 'uname' in data.keys():
-            del data['uname']
+        if get_username(fstat.st_uid):
+            data['user_name'] = get_username(fstat.st_uid)
+        elif 'user_name' in data.keys():
+            del data['user_name']
 
-    except:
-        for key in ['blocks', 'block_size', 'device', 'device_type', 'gid', 'gname', 'hard_links', 'inode', 'last_access', 'last_access_time', 'last_modified', 'last_modified_time', 'last_status_change', 'last_status_change_time', 'mode_8', 'mode_x', 'size', 'type', 'uid', 'uname']:
+    except ValueError:
+        for key in ['blocks', 'block_size', 'device', 'device_type', 'gid', 'group_name', 'hard_links', 'inode', 'last_access', 'last_access_time', 'last_modified', 'last_modified_time', 'last_status_change', 'last_status_change_time', 'mode_8', 'mode_x', 'size', 'type', 'uid', 'user_name']:
             if key in data.keys():
                 del data[key]
-
 
     if os.path.islink(file):
         if os.path.exists(file):
@@ -115,97 +104,99 @@ def fileInfo(file, data):
             data['isvalid'] = 'false'
         return data
 
-
     for key in ['reference', 'isvalid']:
         if key in data.keys():
             del data[key]
 
-
     if not os.path.isdir(file):
         data['sha256'] = sha256(file, fstat.st_size)
 
-
     return data
 
-
-#def fileInfo_toadd(name, path, data):
-#    data['mount_point'] = path
-#    data['mount_source'] = path
-
-#    drive, path = os.path.splitdrive(file)
-#    drive, path = os.path.splittext(file)
-
-#    eval "stat_vals=( $(stat --format="['mount_point']='%m' ['time_of_birth']='%w'" "$1") )"
-#    local mount_source="$(grep -E '\s'"${stat_vals['mount_point']}"'\s' /etc/fstab | awk '{print $1}')"
-
-#    data['xfr_size_hint'] = fstat.st_size
-#    data['device_number'] = fstat.st_size
-
-#    data['access_rights_time'] = fstat.st_size
-#    data['raw_mode'] = fstat.st_size
-#    data['device_type'] = fstat.st_size
-
-#    data['file_created'] = fstat.st_birthtime
-#    data['file_created_time'] = zulu_timestamp(fstat.birthtime)
-#    return data
-
+#-----------------------------------------------------------------------------
+def get_groupname(gid):
+    """
+    Returns the name of the group corresponding to the given group ID (gid).
+    If the group ID is not found, None is returned.
+    """
+    group_info = grp.getgrgid(gid)
+    return group_info[0] if group_info else None
 
 #-----------------------------------------------------------------------------
-def groupName(gid):
+def get_username(uid):
+    username = None
     try:
-        return grp.getgrgid(gid)[0]
-    except:
-        return None
+        username = pwd.getpwuid(uid)[0]
+    except KeyError:
+        pass
+    return username
 
 
 #-----------------------------------------------------------------------------
-def userName(uid):
-    try:
-        return pwd.getpwuid(uid)[0]
-    except:
-        return None
-
-
-#-----------------------------------------------------------------------------
-def fileType(mode):
-    if S_ISBLK(mode):
+def file_type(p):
+    if p.is_block_device():
         return "block device"
-    if S_ISCHR(mode):
+    if p.is_char_device():
         return "character device"
-    if S_ISDIR(mode):
+    if p.is_dir():
         return "directory"
-    if S_ISFIFO(mode):
+    if p.is_fifo():
         return "FIFO/pipe"
-    if S_ISLNK(mode):
+    if p.is_symlink():
         return "symlink"
-    if S_ISREG(mode):
+    if p.is_file():
         return "regular file"
-    if S_ISSOCK(mode):
+    if p.is_socket():
         return "socket"
     return "unknown"
 
+#-----------------------------------------------------------------------------
+def sha256(file_path, block_size):
+    if block_size <= 0:
+        return ''
+
+    sha = hashlib.sha256()
+    with open(file_path, mode='rb') as file:
+        while True:
+            chunk = file.read(block_size)
+            if not chunk:
+                break
+            sha.update(chunk)
+
+    return sha.hexdigest()
 
 #-----------------------------------------------------------------------------
-def sha256(file, size):
-    if size > 0:
-        sha = hashlib.sha256()
-        if size > BLKSIZE:
-            size = BLKSIZE
-        with open(file, mode='rb') as fd:
-            bytes = fd.read(size)
-            while bytes != "":
-                sha.update(bytes)
-                bytes = fd.read(size)
-        return sha.hexdigest()
-    return ''
+def generate_insecure_uuid() -> str:
+    """
+    Generate an insecure UUID.
 
-#-----------------------------------------------------------------------------
-def uuid1mc_insecure():
-    return str(uuid1(random.getrandbits(48) | 0x010000000000))
+    This function generates a UUID using a random number of 48 bits
+    and returns the UUID as a string.
+
+    Returns:
+        str: The generated insecure UUID.
+    """
+    random_num = random.getrandbits(48)
+    return str(uuid1(random_num))
 
 #-----------------------------------------------------------------------------
 def zulu_timestamp(tstamp):
-    return datetime.datetime.fromtimestamp(tstamp).strftime("%Y-%m-%dT%I:%M:%S.%fZ")
+    """
+    Convert a timestamp to a Zulu timestamp string format.
+
+    Args:
+        tstamp (float): The timestamp to convert.
+
+    Returns:
+        str: The Zulu timestamp string in the format "%Y-%m-%dT%I:%M:%S.%fZ".
+    """
+    # Convert the timestamp to a datetime object
+    dt = datetime.datetime.fromtimestamp(tstamp)
+
+    # Format the datetime object as a Zulu timestamp string
+    zulu_timestamp_str = dt.strftime("%Y-%m-%dT%I:%M:%S.%fZ")
+
+    return zulu_timestamp_str
 
 
 #-----------------------------------------------------------------------------
@@ -259,56 +250,46 @@ class GetArgs:
         if len(self.dirs) == 0:
             raise ValueError('No directories or files defined')
 
-        return
-
 
 #-----------------------------------------------------------------------------
 class FileProducer(object):
     def __init__(self, filename, topic = ''):
         self.filename = filename
-        self.opFile = open(filename, 'wt')
+        self.op_file = open(filename, 'wt')
         self.topic = topic
-        return
 
     def close(self):
-        self.opFile.close()
+        self.op_file.close()
 
-    def produce(self, value=None, key=None):
+    def produce(self, value=None):
         try:
-            my_json =  json.dumps(value)
+            my_json = json.dumps(value)
             self.save(my_json)
-        except:
+        except Exception:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2, file=sys.stdout)
-            for key in value:
-                print "   {}: ".format(key),
-        finally:
-            return
-        
+            for k in value:
+                print (f"   {k}: ")
+
 
     def save(self, info):
-        self.opFile.write(info + "\n")
-        self.opFile.flush()
+        self.op_file.write(info + "\n")
+        self.op_file.flush()
 
 
 
 #-----------------------------------------------------------------------------
 class KafkaProducer(object):
     def __init__(self, server, topic):
-        self.topic = topic
         # bootstrap.servers  - A list of host/port pairs to use for establishing the initial connection to the Kafka cluster
         # client.id          - An id string to pass to the server when making requests
- #       self.kafka = Producer({"bootstrap.servers": server,
- #                                 "client.id": socket.gethostname()})
-        return
+        self.topic = topic
 
     def produce(self, value=None, key=None):
-#        json_objects = dict()
-
         # Convert value and key to utf-8 format
         json_objects = json.loads(value)
         json_objects['timestamp'] = zulu_timestamp()
-        json_objects['uuid'] = uuid1mc_insecure()
+        json_objects['uuid'] = generate_insecure_uuid()
 
         input_data = dict()
         input_data["topic"] = self.topic
@@ -350,7 +331,7 @@ class ScanShareFiles:
         self.logger.addHandler(ch)
 
         self.producer = None
-        self.opFile = None
+        self.op_file = None
         self.dirs = dict()
         self.changes = 0
         self.file_count = 0
@@ -361,25 +342,25 @@ class ScanShareFiles:
         args = GetArgs()
         args.validate_options()
         self.args = args
-
         args.validate_options()
         self.args = args
         if args.kafka:
             self.producer = KafkaProducer(args.servers, args.topic)
         else:
             self.producer = FileProducer(args.file, args.topic)
-
-#        args.dirs = ['/mnt/Synology/Guest/All Users/Music.todo/20100822/Music.Partial/Tool']
-
         self.data = dict()
 
         for dir in args.dirs:
             print('dirs:  '+dir)
-            self.produceData(dir)
+            self.produce_data(dir)
         self.producer.close()
+        self.create_summary()
 
+    def create_summary(self):
+        # TODO
+        pass
 
-    def produceData(self, basedir):
+    def produce_data(self, basedir):
         file_count = 0
         dir_count = 0
         sha = hashlib.sha256()
@@ -394,11 +375,11 @@ class ScanShareFiles:
 
                 if os.path.isdir(file):
                     dir_count += 1
-                    self.produceData(file)
+                    self.produce_data(file)
 
                 else:
                     file_count += 1
-                    fileInfo(file, self.data)
+                    file_info(file, self.data)
                     self.producer.produce(self.data)
 
                 if 'size' in self.data.keys():
@@ -407,11 +388,11 @@ class ScanShareFiles:
                 if 'sha256' in self.data.keys():
                     sha.update(self.data['sha256'])
 
-            except:
+            except Exception:
                 continue
-            
 
-        fileInfo(basedir, self.data)
+
+        file_info(basedir, self.data)
         self.data['size'] = size
         self.data['file_count'] = file_count
         self.data['dir_count'] = dir_count
@@ -419,6 +400,7 @@ class ScanShareFiles:
         self.producer.produce(self.data)
 
         print ('   detected {} dirs and {} files on {}'.format(dir_count, file_count, basedir))
+
 
 
 #-----------------------------------------------------------------------------
