@@ -27,7 +27,7 @@ spec:
       keytool -importcert -cacerts -noprompt -trustcacerts -alias jenkins_server -file /usr/local/share/ca-certificates/server.crt -storepass changeit
       cp -rL "${JAVA_HOME}/lib/security/cacerts" .
       chmod 644 *
-    image: s2.ubuntu.home:5000/docker.io/jenkins/inbound-agent:4.13.3-1-jdk17
+    image: s2.ubuntu.home:5000/docker.io/jenkins/inbound-agent:3283.v92c105e0f819-1-alpine-jdk17
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -62,7 +62,7 @@ spec:
       mountPath: /var/run/keystore
   containers:
   - name: jnlp
-    image: s2.ubuntu.home:5000/docker.io/jenkins/inbound-agent:4.13.3-1-jdk17
+    image: s2.ubuntu.home:5000/docker.io/jenkins/inbound-agent:3283.v92c105e0f819-1-alpine-jdk17
 #    env:
       # running under Java 11 gives "illegal reflective access" warnings
       # https://github.com/glencoesoftware/raw2ometiff/issues/18
@@ -90,7 +90,7 @@ spec:
     - name: workspace-volume
       mountPath: /home
   - name: postgres
-    image: s2.ubuntu.home:5000/docker.io/postgres:16.1-alpine3.18
+    image: s2.ubuntu.home:5000/docker.io/postgres:16.6-alpine3.20
     imagePullPolicy: IfNotPresent
     ports:
       - name: postgres
@@ -114,7 +114,7 @@ spec:
     args:
     - cat
     tty: true
-    image: s2.ubuntu.home:5000/docker.io/python:3.9.18
+    image: s2.ubuntu.home:5000/docker.io/python:3.9.21-alpine3.20
     imagePullPolicy: IfNotPresent
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File

@@ -26,6 +26,7 @@ import sys
 import traceback
 from encodings.aliases import aliases
 from uuid import uuid1
+from webdav3.client import Client
 
 # 3rd party imports
 #from confluent_kafka import Producer, Consumer, KafkaError, OFFSET_BEGINNING, OFFSET_END, OFFSET_STORED, OFFSET_INVALID
@@ -365,6 +366,14 @@ class ScanShareFiles:
         dir_count = 0
         sha = hashlib.sha256()
         size = 0
+
+        options = {
+           'webdav_hostname': "https://10.3.1.4:5001",
+           'webdav_login':    "bobb",
+           'webdav_password': "123Oleary"
+         }
+        client = Client(options)
+        
 
         for name in os.listdir(basedir):
             if name == '#recycle':
